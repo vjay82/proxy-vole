@@ -64,8 +64,6 @@ public class PacProxySelector extends ProxySelector {
 	 * @param pacSource to use as input.
 	 ************************************************************************/
 	
-    // TODO 30.03.2015 bros Test with Java 8 Nashorn script engine 
-
 	private void selectEngine(PacScriptSource pacSource) {
 		try {
 			if (this.JAVAX_PARSER) {
@@ -120,13 +118,19 @@ public class PacProxySelector extends ProxySelector {
 	 * @param uri <code>URI</code> to be evaluated.
 	 * @return <code>Proxy</code>-object list as result of the evaluation.
 	 ************************************************************************/
-
 	private List<Proxy> findProxy(URI uri) {
 		try {
 			List<Proxy> proxies = new ArrayList<Proxy>();
-			String parseResult = this.pacScriptParser.evaluate(uri.toString(),
+			String parseResult = pacScriptParser.evaluate(uri.toString(),
 					uri.getHost());
-			String[] proxyDefinitions = parseResult.split("[;]");
+			Logger.log(getClass(), LogLevel.TRACE, "Proxies for uri {0} -> {1}", uri, parseResult);
+			String[] proxyDefinitions;
+			if (parseResult != null) {
+				proxyDefinitions = parseResult.split("[;]");
+			}else{
+				Logger.log(getClass(), LogLevel.WARNING, "Pac Function returned null for uri {0}",uri);
+				proxyDefinitions = new String[ ]{"NULL"};
+			}
 			for (String proxyDef : proxyDefinitions) {
 				if (proxyDef.trim().length() > 0) {
 					proxies.add(buildProxyFromPacResult(proxyDef));
@@ -147,7 +151,7 @@ public class PacProxySelector extends ProxySelector {
 	 ************************************************************************/
 
 	private Proxy buildProxyFromPacResult(String pacResult) {
-		if (pacResult == null || pacResult.trim().length() < 6) {
+		if (pacResult == null || pacResult.trim().equalsIgnoreCase("null") || pacResult.trim().length() < 6) {
 			return Proxy.NO_PROXY;
 		}
 		String proxyDef = pacResult.trim();
@@ -166,8 +170,7 @@ public class PacProxySelector extends ProxySelector {
 
 		// Split port from host
 		int indexOfPort = host.indexOf(':');
-		int index2 = host.lastIndexOf(']');
-		if (indexOfPort != -1 && index2 < indexOfPort) {
+		if (indexOfPort != -1) {
 			port = Integer.parseInt(host.substring(indexOfPort+1).trim());
 			host = host.substring(0, indexOfPort).trim();
 		}
