@@ -1,10 +1,9 @@
 package com.btr.proxy.search.browser.firefox;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Properties;
 
 /*****************************************************************************
@@ -33,17 +32,14 @@ class FirefoxSettingParser {
 	
 	public Properties parseSettings(FirefoxProfileSource source) throws IOException {
 		// Search settings folder
-		File profileFolder = source.getProfileFolder();
+		Path profileFolder = source.getProfileFolder();
 		
 		// Read settings from file
-		File settingsFile = new File(profileFolder, "prefs.js");
-		
-		BufferedReader fin = new BufferedReader(
-				new InputStreamReader(
-					new FileInputStream(settingsFile)));
+		Path settingsFile = profileFolder.resolve( "prefs.js");
+	
 
 		Properties result = new Properties();
-		try {
+		try (BufferedReader fin = Files.newBufferedReader(settingsFile);){
 			String line = fin.readLine();
 			while (line != null) {
 				line = line.trim();
@@ -68,9 +64,7 @@ class FirefoxSettingParser {
 				}
 				line = fin.readLine();
 			}
-		} finally {
-			fin.close();
-		}
+		} 
 
 		return result;
 	}

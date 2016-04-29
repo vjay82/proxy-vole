@@ -21,22 +21,22 @@ import com.btr.proxy.util.ProxyUtil;
 
 /*****************************************************************************
  * Loads the Firefox3 proxy settings from the users Firefox3 settings.
- * This will load the file <i>prefs.js</i> that is located in the 
+ * This will load the file <i>prefs.js</i> that is located in the
  * <p>
- * <i>.mozilla/firefox/(profile)/</i> folder. 
+ * <i>.mozilla/firefox/(profile)/</i> folder.
  * </p>
  * 
- * See <a href="https://developer.mozilla.org/En/Mozilla_Networking_Preferences">Mozilla_Networking_Preferences</a> 
+ * See <a href="https://developer.mozilla.org/En/Mozilla_Networking_Preferences">Mozilla_Networking_Preferences</a>
  * for an explanation of the proxy settings.
  * <p>
- * The following settings are extracted from 
- * this file: 
- * </p> 
+ * The following settings are extracted from
+ * this file:
+ * </p>
  * Some generic settings:<br/>
  * <ul>
  * <li><i>network.proxy.type</i> -> n/a = use system settings, 0 = direct, 1 = Fixed proxy settings, 2 = proxy script (PAC), 3 = also direct , 4 = auto detect (WPAD)</li>
  * <li><i>network.proxy.share_proxy_settings</i> -> true = use same proxy for all protocols</li>
- * <li><i>network.proxy.no_proxies_on</i> -> a comma separated ignore list. </li>
+ * <li><i>network.proxy.no_proxies_on</i> -> a comma separated ignore list.</li>
  * <li><i>network.proxy.autoconfig_url</i> -> a URL to an proxy configuration script</li>
  * </ul>
  * Host names and ports per protocol are stored in the following settings:
@@ -56,19 +56,21 @@ import com.btr.proxy.util.ProxyUtil;
  * <p>
  * Note that if there are more than one profile the first profile found will be used.
  * </p>
+ * 
  * @author Bernd Rosstauscher (proxyvole@rosstauscher.de) Copyright 2009
  ****************************************************************************/
 
 public class FirefoxProxySearchStrategy implements ProxySearchStrategy {
-	
+
 	private FirefoxProfileSource profileScanner;
 	private FirefoxSettingParser settingsParser;
 
 	/*************************************************************************
 	 * ProxySelector
+	 * 
 	 * @see java.net.ProxySelector#ProxySelector()
 	 ************************************************************************/
-	
+
 	public FirefoxProxySearchStrategy() {
 		super();
 		if (PlatformUtil.getCurrentPlattform() == Platform.WIN) {
@@ -78,83 +80,92 @@ public class FirefoxProxySearchStrategy implements ProxySearchStrategy {
 		}
 		this.settingsParser = new FirefoxSettingParser();
 	}
-	
+
 	/*************************************************************************
 	 * Loads the proxy settings and initializes a proxy selector for the firefox
 	 * proxy settings.
+	 * 
 	 * @return a configured ProxySelector, null if none is found.
-	 * @throws ProxyException on file reading error. 
+	 * @throws ProxyException
+	 *             on file reading error.
 	 ************************************************************************/
 
+	@Override
 	public ProxySelector getProxySelector() throws ProxyException {
 		Logger.log(getClass(), LogLevel.TRACE, "Detecting Firefox settings.");
 
 		Properties settings = readSettings();
-		
-		ProxySelector result = null; 
-		int type = Integer.parseInt(settings.getProperty("network.proxy.type", "-1"));
+
+		ProxySelector result = null;
+		int type =  Integer.parseInt(settings.getProperty("network.proxy.type", "-1"));
 		switch (type) {
-			case -1: // Use system settings
+			case -1 : // Use system settings
 				Logger.log(getClass(), LogLevel.TRACE, "Firefox uses system settings");
 				result = new DesktopProxySearchStrategy().getProxySelector();
 				break;
-			case 0: // Use no proxy 
+			case 0 : // Use no proxy 
 				Logger.log(getClass(), LogLevel.TRACE, "Firefox uses no proxy");
 				result = NoProxySelector.getInstance();
 				break;
-			case 1: // Fixed settings
+			case 1 : // Fixed settings
 				Logger.log(getClass(), LogLevel.TRACE, "Firefox uses manual settings");
 				result = setupFixedProxySelector(settings);
 				break;
-			case 2: // PAC Script
+			case 2 : // PAC Script
 				String pacScriptUrl = settings.getProperty("network.proxy.autoconfig_url", "");
 				Logger.log(getClass(), LogLevel.TRACE, "Firefox uses script (PAC) {0}", pacScriptUrl);
 				result = ProxyUtil.buildPacSelectorForUrl(pacScriptUrl);
 				break;
-			case 3: // Backward compatibility to netscape.
+			case 3 : // Backward compatibility to netscape.
 				Logger.log(getClass(), LogLevel.TRACE, "Netscape compability mode -> uses no proxy");
 				result = NoProxySelector.getInstance();
 				break;
-			case 4: // WPAD auto config
+			case 4 : // WPAD auto config
 				Logger.log(getClass(), LogLevel.TRACE, "Firefox uses automatic detection (WPAD)");
 				result = new WpadProxySearchStrategy().getProxySelector();
 				break;
-			default:
+			default :
 				break;
 		}
 
 		// Wrap in white list filter.
-		String noProxyList = settings.getProperty("network.proxy.no_proxies_on", null);
-		if (result != null && noProxyList != null && noProxyList.trim().length() > 0) {
-			Logger.log(getClass(), LogLevel.TRACE, "Firefox uses proxy bypass list for: {0}", noProxyList);
-			result = new ProxyBypassListSelector(noProxyList, result);
-		}
 		
+		if (result != null) {
+			String noProxyList = settings.getProperty("network.proxy.no_proxies_on", null);
+			if( noProxyList != null && noProxyList.trim().length() > 0) {
+				Logger.log(getClass(), LogLevel.TRACE, "Firefox uses proxy bypass list for: {0}", noProxyList);
+				result = new ProxyBypassListSelector(noProxyList, result);
+			}
+		}
+
 		return result;
 	}
 
 	/*************************************************************************
 	 * Reads the settings file and stores all settings in a Properties map.
+	 * 
 	 * @return the parsed settings.
-	 * @throws ProxyException on read error.
+	 * @throws ProxyException
+	 *             on read error.
 	 ************************************************************************/
-	
+
 	public Properties readSettings() throws ProxyException {
 		try {
-			Properties settings = this.settingsParser.parseSettings(this.profileScanner);
-			return settings;
+			return this.settingsParser.parseSettings(this.profileScanner);
 		} catch (IOException e) {
 			Logger.log(getClass(), LogLevel.ERROR, "Error parsing settings", e);
-			throw new ProxyException(e);
+			return new Properties();
 		}
 	}
 
 	/*************************************************************************
-	 * Parse the fixed proxy settings and build an ProxySelector for this a 
+	 * Parse the fixed proxy settings and build an ProxySelector for this a
 	 * chained configuration.
-	 * @param settings the proxy settings to evaluate.
+	 * 
+	 * @param settings
+	 *            the proxy settings to evaluate.
 	 ************************************************************************/
-	
+
 	private ProxySelector setupFixedProxySelector(Properties settings) {
 		ProtocolDispatchSelector ps = new ProtocolDispatchSelector();
 		installHttpProxy(ps, settings);
@@ -163,7 +174,7 @@ public class FirefoxProxySearchStrategy implements ProxySearchStrategy {
 		} else {
 			installFtpProxy(ps, settings);
 			installSecureProxy(ps, settings);
-	        installSocksProxy(ps, settings);
+			installSocksProxy(ps, settings);
 		}
 		return ps;
 	}
@@ -173,9 +184,8 @@ public class FirefoxProxySearchStrategy implements ProxySearchStrategy {
 	 * @param settings
 	 * @throws NumberFormatException
 	 ************************************************************************/
-	
-	private void installFtpProxy(ProtocolDispatchSelector ps,
-			Properties settings) throws NumberFormatException {
+
+	private void installFtpProxy(ProtocolDispatchSelector ps, Properties settings) throws NumberFormatException {
 		installSelectorForProtocol(ps, settings, "ftp");
 	}
 
@@ -184,18 +194,19 @@ public class FirefoxProxySearchStrategy implements ProxySearchStrategy {
 	 * @param settings
 	 * @throws NumberFormatException
 	 ************************************************************************/
-	
-	private void installHttpProxy(ProtocolDispatchSelector ps,
-			Properties settings) throws NumberFormatException {
+
+	private void installHttpProxy(ProtocolDispatchSelector ps, Properties settings) throws NumberFormatException {
 		installSelectorForProtocol(ps, settings, "http");
 	}
 
 	/*************************************************************************
-	 * Checks if the "share proxy settings" option is set 
-	 * @param settings to parse
+	 * Checks if the "share proxy settings" option is set
+	 * 
+	 * @param settings
+	 *            to parse
 	 * @return true if the option is set else false
 	 ************************************************************************/
-	
+
 	private boolean isProxyShared(Properties settings) {
 		return Boolean.TRUE.toString().equals(settings.getProperty("network.proxy.share_proxy_settings", "false").toLowerCase());
 	}
@@ -203,7 +214,7 @@ public class FirefoxProxySearchStrategy implements ProxySearchStrategy {
 	/*************************************************************************
 	 * @param ps
 	 ************************************************************************/
-	
+
 	private void installSharedProxy(ProtocolDispatchSelector ps) {
 		ProxySelector httpProxy = ps.getSelector("http");
 		if (httpProxy != null) {
@@ -216,15 +227,14 @@ public class FirefoxProxySearchStrategy implements ProxySearchStrategy {
 	 * @param settings
 	 * @throws NumberFormatException
 	 ************************************************************************/
-	
-	private void installSocksProxy(ProtocolDispatchSelector ps,
-			Properties settings) throws NumberFormatException {
+
+	private void installSocksProxy(ProtocolDispatchSelector ps, Properties settings) throws NumberFormatException {
 		String proxyHost = settings.getProperty("network.proxy.socks", null);
-        int proxyPort = Integer.parseInt(settings.getProperty("network.proxy.socks_port", "0"));
-        if (proxyHost != null && proxyPort != 0) {
-                Logger.log(getClass(), LogLevel.TRACE, "Firefox socks proxy is {0}:{1}", proxyHost, proxyPort);
-                ps.setSelector("socks", new FixedSocksSelector(proxyHost, proxyPort));
-        }
+		int proxyPort = Integer.parseInt(settings.getProperty("network.proxy.socks_port", "0"));
+		if (proxyHost != null && proxyPort != 0) {
+			Logger.log(getClass(), LogLevel.TRACE, "Firefox socks proxy is {0}:{1}", proxyHost, proxyPort);
+			ps.setSelector("socks", new FixedSocksSelector(proxyHost, proxyPort));
+		}
 	}
 
 	/*************************************************************************
@@ -232,9 +242,8 @@ public class FirefoxProxySearchStrategy implements ProxySearchStrategy {
 	 * @param settings
 	 * @throws NumberFormatException
 	 ************************************************************************/
-	
-	private void installSecureProxy(ProtocolDispatchSelector ps,
-			Properties settings) throws NumberFormatException {
+
+	private void installSecureProxy(ProtocolDispatchSelector ps, Properties settings) throws NumberFormatException {
 		String proxyHost = settings.getProperty("network.proxy.ssl", null);
 		int proxyPort = Integer.parseInt(settings.getProperty("network.proxy.ssl_port", "0"));
 		if (proxyHost != null && proxyPort != 0) {
@@ -245,24 +254,26 @@ public class FirefoxProxySearchStrategy implements ProxySearchStrategy {
 	}
 
 	/*************************************************************************
-	 * Installs a proxy selector for the given protocol when settings are 
+	 * Installs a proxy selector for the given protocol when settings are
 	 * available.
-	 * @param ps a ProtocolDispatchSelector to configure.
-	 * @param settings to read the config from.
-	 * @param protocol to configure.
+	 * 
+	 * @param ps
+	 *            a ProtocolDispatchSelector to configure.
+	 * @param settings
+	 *            to read the config from.
+	 * @param protocol
+	 *            to configure.
 	 * @throws NumberFormatException
 	 ************************************************************************/
-	
-	private void installSelectorForProtocol(ProtocolDispatchSelector ps,
-			Properties settings, String protocol) throws NumberFormatException {
-		
-		String proxyHost = settings.getProperty("network.proxy."+protocol, null);
-		int proxyPort = Integer.parseInt(settings.getProperty("network.proxy."+protocol+"_port", "0"));
+
+	private void installSelectorForProtocol(ProtocolDispatchSelector ps, Properties settings, String protocol) throws NumberFormatException {
+
+		String proxyHost = settings.getProperty("network.proxy." + protocol, null);
+		int proxyPort = Integer.parseInt(settings.getProperty("network.proxy." + protocol + "_port", "0"));
 		if (proxyHost != null && proxyPort != 0) {
-			Logger.log(getClass(), LogLevel.TRACE, "Firefox "+protocol+" proxy is {0}:{1}", proxyHost, proxyPort);
+			Logger.log(getClass(), LogLevel.TRACE, "Firefox " + protocol + " proxy is {0}:{1}", proxyHost, proxyPort);
 			ps.setSelector(protocol, new FixedProxySelector(proxyHost, proxyPort));
 		}
 	}
-	
 
 }
