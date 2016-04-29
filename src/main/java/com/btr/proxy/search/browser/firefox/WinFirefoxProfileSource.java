@@ -47,9 +47,4 @@ class WinFirefoxProfileSource extends FirefoxProfileSource {
 	public Path getProfileFolder() throws IOException {
 		return getProfileFolder(getAppFolder());
 	}
-
-	public static void main(String[] args) throws Exception {
-		System.out.println(new WinFirefoxProfileSource().getProfileFolder());
-	}
-
 }

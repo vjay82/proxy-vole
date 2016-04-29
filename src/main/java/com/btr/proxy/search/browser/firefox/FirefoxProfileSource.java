@@ -9,9 +9,6 @@ import java.nio.file.Paths;
 import org.ini4j.Ini;
 import org.ini4j.Profile.Section;
 
-import com.btr.proxy.util.Logger;
-import com.btr.proxy.util.Logger.LogLevel;
-
 /*****************************************************************************
  * A profile source for Firefox profiles.
  * 
@@ -32,8 +29,6 @@ abstract class FirefoxProfileSource {
 	public abstract Path getProfileFolder() throws IOException;
 
 	public Path getProfileFolder(String baseDir) throws IOException {
-		Logger.log(getClass(), LogLevel.INFO, "Firefox profile base path: {0}", baseDir);
-		System.out.println("BASEDIR "+baseDir);
 		Path cfgDir = Paths.get(baseDir, "Mozilla", "Firefox");
 		if (!Files.exists(cfgDir)) {
 			throw new IOException("Firefox settings folder " + cfgDir + " not found. ");
